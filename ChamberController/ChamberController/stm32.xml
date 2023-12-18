@@ -1,0 +1,61 @@
+<?xml version="1.0"?>
+<EmbeddedProfile xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <ToolchainID>com.visualgdb.arm-eabi</ToolchainID>
+  <ToolchainVersion>
+    <GCC>12.2.1</GCC>
+    <GDB>12.2</GDB>
+    <Revision>2</Revision>
+  </ToolchainVersion>
+  <BspID>com.sysprogs.arm.stm32</BspID>
+  <BspVersion>2023.07</BspVersion>
+  <McuID>STM32F030K6</McuID>
+  <MCUDefinitionFile>STM32F0xxxx/DeviceDefinitions/stm32f030x6.xml</MCUDefinitionFile>
+  <MCUProperties>
+    <Entries>
+      <KeyValue>
+        <Key>com.sysprogs.mcuoptions.ignore_startup_file</Key>
+      </KeyValue>
+      <KeyValue>
+        <Key>com.sysprogs.toolchainoptions.arm.libctype</Key>
+        <Value>--specs=nano.specs</Value>
+      </KeyValue>
+      <KeyValue>
+        <Key>com.sysprogs.toolchainoptions.arm.syscallspecs</Key>
+        <Value>--specs=nosys.specs</Value>
+      </KeyValue>
+    </Entries>
+  </MCUProperties>
+  <BSPSourceFolderName>Device-specific files</BSPSourceFolderName>
+  <MCUMakFile>stm32.mak</MCUMakFile>
+  <ReferencedFrameworks>
+    <string>com.sysprogs.arm.stm32.freertos</string>
+    <string>com.sysprogs.arm.stm32.hal</string>
+    <string>com.sysprogs.arm.stm32.ll</string>
+  </ReferencedFrameworks>
+  <FrameworkProperties>
+    <Entries>
+      <KeyValue>
+        <Key>com.sysprogs.bspoptions.stm32.freertos.heap</Key>
+        <Value>heap_1</Value>
+      </KeyValue>
+      <KeyValue>
+        <Key>com.sysprogs.bspoptions.stm32.freertos.portcore</Key>
+        <Value>CM0</Value>
+      </KeyValue>
+      <KeyValue>
+        <Key>com.sysprogs.bspoptions.stm32.freertos.cmsis</Key>
+        <Value>CMSIS_RTOS</Value>
+      </KeyValue>
+      <KeyValue>
+        <Key>com.sysprogs.stm32.legacy_hal_src</Key>
+        <Value />
+      </KeyValue>
+      <KeyValue>
+        <Key>com.sysprogs.bspoptions.stm32.ll_driver</Key>
+      </KeyValue>
+    </Entries>
+  </FrameworkProperties>
+  <TestFrameworkProperties>
+    <Entries />
+  </TestFrameworkProperties>
+</EmbeddedProfile>
