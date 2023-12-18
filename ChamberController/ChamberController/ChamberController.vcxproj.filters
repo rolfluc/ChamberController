@@ -42,7 +42,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="ChamberController.c">
+    <ClCompile Include="main.c">
       <Filter>Source files</Filter>
     </ClCompile>
     <ClCompile Include="system_stm32f0xx.c">

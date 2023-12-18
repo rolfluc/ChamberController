@@ -56,7 +56,7 @@ int main(void)
      */
 	HAL_Init();  
 	
-	__GPIOD_CLK_ENABLE();
+	__GPIOB_CLK_ENABLE();
 	GPIO_InitTypeDef GPIO_InitStructure;
 
 	GPIO_InitStructure.Pin = GPIO_PIN_12 | GPIO_PIN_13;
@@ -64,7 +64,7 @@ int main(void)
 	GPIO_InitStructure.Mode = GPIO_MODE_OUTPUT_PP;
 	GPIO_InitStructure.Speed = GPIO_SPEED_FREQ_HIGH;
 	GPIO_InitStructure.Pull = GPIO_NOPULL;
-	HAL_GPIO_Init(GPIOD, &GPIO_InitStructure);
+	HAL_GPIO_Init(GPIOB, &GPIO_InitStructure);
 
 	/* Thread 1 definition */
 	osThreadDef(LED1, LED_Thread1, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
@@ -103,14 +103,7 @@ static void LED_Thread1(void const *argument)
   
 	for (;;)
 	{
-		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, GPIO_PIN_SET);
-		osDelay(2000);
-		
-		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, GPIO_PIN_RESET);
-		osThreadSuspend(LEDThread2Handle);
-		osDelay(2000);
-		
-		osThreadResume(LEDThread2Handle);
+		osDelay(200);	
 	}
 }
 
@@ -121,12 +114,10 @@ static void LED_Thread1(void const *argument)
   */
 static void LED_Thread2(void const *argument)
 {
-	uint32_t count;
 	(void) argument;
   
 	for (;;)
 	{
-		HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_13);
 		osDelay(200);
 	}
 }
