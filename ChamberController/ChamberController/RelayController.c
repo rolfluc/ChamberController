@@ -9,8 +9,7 @@ typedef struct
 }RelayController;
 
 
-RelayController heater0; 
-RelayController heater1; 
+RelayController heater; 
 RelayController charger; 
 
 static inline void DriveRelay(RelayController* relay, RelayState state)	
@@ -47,23 +46,15 @@ void InitRelays()
 	HAL_GPIO_Init(HRelay0_m.pinPort, &init);
 	init.Pin = HRelay0_p.pinNumber;
 	HAL_GPIO_Init(HRelay0_p.pinPort, &init);
-	init.Pin = HRelay1_m.pinNumber;
-	HAL_GPIO_Init(HRelay1_m.pinPort, &init);
-	init.Pin = HRelay1_p.pinNumber;
-	HAL_GPIO_Init(HRelay1_p.pinPort, &init);
 	init.Pin = CRelay_m.pinNumber;
 	HAL_GPIO_Init(CRelay_m.pinPort, &init);
 	init.Pin = CRelay_p.pinNumber;
 	HAL_GPIO_Init(CRelay_p.pinPort, &init);
 	
 	//Keep Relays off on boot.
-	heater0.drive_m = HRelay0_m;
-	heater0.drive_p = HRelay0_p;
-	DriveRelay(&heater0, Relay_Off);
-	
-	heater1.drive_m = HRelay1_m;
-	heater1.drive_p = HRelay1_p;
-	DriveRelay(&heater1, Relay_Off);
+	heater.drive_m = HRelay0_m;
+	heater.drive_p = HRelay0_p;
+	DriveRelay(&heater, Relay_Off);
 	
 	charger.drive_m = CRelay_m;
 	charger.drive_p = CRelay_p;
@@ -76,17 +67,12 @@ void SetRelay(Relay which, RelayState state)
 {
 	switch (which)
 	{
-	case Heater0:
+	case Heater:
 		{
-			DriveRelay(&heater0, state);
+			DriveRelay(&heater, state);
 		}
 		break;
-	case Heater1:
-		{
-			DriveRelay(&heater1, state);
-		}
-		break;
-	case Charger:
+	case Cooler:
 		{
 			DriveRelay(&charger, state);
 		}
@@ -100,17 +86,12 @@ RelayState GetRelayState(Relay relay)
 {
 	switch (relay)
 	{
-	case Heater0:
+	case Heater:
 		{
-			return heater0.currentState;
+			return heater.currentState;
 		}
 		break;
-	case Heater1:
-		{
-			return heater1.currentState;
-		}
-		break;
-	case Charger:
+	case Cooler:
 		{
 			return charger.currentState;
 		}

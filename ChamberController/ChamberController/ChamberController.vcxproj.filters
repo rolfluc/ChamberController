@@ -627,5 +627,61 @@
     <ClInclude Include="$(BSP_ROOT)\FreeRTOS\Source\CMSIS_RTOS\cmsis_os.h">
       <Filter>Header files\Device-specific files\FreeRTOS</Filter>
     </ClInclude>
+    <ClCompile Include="Thermometer.c">
+      <Filter>Source files</Filter>
+    </ClCompile>
+    <ClCompile Include="ADC.c">
+      <Filter>Source files</Filter>
+    </ClCompile>
+    <ClCompile Include="UART.c">
+      <Filter>Source files</Filter>
+    </ClCompile>
+    <ClCompile Include="RelayController.c">
+      <Filter>Source files</Filter>
+    </ClCompile>
+    <ClCompile Include="I2C.c">
+      <Filter>Source files</Filter>
+    </ClCompile>
+    <ClCompile Include="EEPROM.c">
+      <Filter>Source files</Filter>
+    </ClCompile>
+    <ClCompile Include="CalTable.c">
+      <Filter>Source files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="PinDefs.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="UART.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="Thermometer.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="Temperature.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="SysDefs.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="RelayController.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="NTC.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="I2C.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="EEPROM.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="CalTable.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="ADC.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

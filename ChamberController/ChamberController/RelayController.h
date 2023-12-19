@@ -5,9 +5,8 @@ void InitRelays();
 
 typedef enum 
 {
-	Heater0 = 0,
-	Heater1,
-	Charger
+	Heater = 0,
+	Cooler
 }Relay;
 
 typedef enum

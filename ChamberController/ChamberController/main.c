@@ -6,14 +6,11 @@
 #include "RelayController.h"
 #include "UART.h"
 
-osThreadId LEDThread1Handle, LEDThread2Handle;
+osThreadId TempControlTaskHandle, ExternalControlsTaskHandle, TempControlTaskHandle;
 
-/* Private function prototypes -----------------------------------------------*/
-static void LED_Thread1(void const *argument);
-static void LED_Thread2(void const *argument);
 static void ThermometerTask(void const *argument);
-static void ExternalControlsTask(void const *arguments);
-static void TempControlTask(void const *arguments);
+static void ExternalControlsTask(void const *argument);
+static void TempControlTask(void const *argument);
 
 void SystemClock_Config(void)
 {
@@ -58,28 +55,20 @@ int main(void)
 	InitRelays();
 	
 	SystemClock_Config();
+	//InitUart();
+	InitEEPROM();
+	SW_Version ver = GetVersion();
+	CalTable cal = AcquireCal();
+	InitThermometer(cal);
 	
-	__GPIOB_CLK_ENABLE();
-	GPIO_InitTypeDef GPIO_InitStructure;
 
-	GPIO_InitStructure.Pin = GPIO_PIN_12 | GPIO_PIN_13;
-
-	GPIO_InitStructure.Mode = GPIO_MODE_OUTPUT_PP;
-	GPIO_InitStructure.Speed = GPIO_SPEED_FREQ_HIGH;
-	GPIO_InitStructure.Pull = GPIO_NOPULL;
-	HAL_GPIO_Init(GPIOB, &GPIO_InitStructure);
-
-	// Thread 1 definition
-	osThreadDef(LED1, LED_Thread1, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
-  
-	 // Thread 2 definition
-	osThreadDef(LED2, LED_Thread2, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
-  
-	// Start thread 1 
-	LEDThread1Handle = osThreadCreate(osThread(LED1), NULL);
-  
-	// Start thread 2 
-	LEDThread2Handle = osThreadCreate(osThread(LED2), NULL);
+	osThreadDef(Thermo, ThermometerTask, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
+	osThreadDef(Control, ExternalControlsTask, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
+	osThreadDef(TempC, TempControlTask, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
+	
+	TempControlTaskHandle = osThreadCreate(osThread(Thermo), NULL);
+	ExternalControlsTaskHandle = osThreadCreate(osThread(Control), NULL);
+	TempControlTaskHandle = osThreadCreate(osThread(TempC), NULL);
   
 	// Start scheduler
 	osKernelStart();
@@ -95,27 +84,57 @@ void SysTick_Handler(void)
 	osSystickHandler();
 }
 
-/**
-  * @brief  Toggle LED1
-  * @param  thread not used
-  * @retval None
-  */
-static void LED_Thread1(void const *argument)
+#define READINGS_COUNT 2
+ADCReadings GetReadingsAverage(ADCReadings* readings)
 {
+	ADCReadings tmp = readings[0];
+	for (uint8_t i = 1; i < READINGS_COUNT; i++)
+	{
+		for (uint8_t j = 0; j < NUMBER_ADCS; j++)
+		{
+			tmp.adcCounts[j] += readings->adcCounts[i];
+		}
+	}
+	
+	for (uint8_t i = 0; i < NUMBER_ADCS; i++)
+	{
+		tmp.adcCounts[i] = tmp.adcCounts[i] / READINGS_COUNT;
+	}
+	
+	return tmp;
+}
+
+
+static ADCReadings readingBuffer[READINGS_COUNT];
+static void ThermometerTask(void const *argument)
+{
+	// Every second should be fine. Temperature moves slowly.
+	static const uint32_t tempRefreshRate_ms = 1000;
 	(void) argument;
-  
+	
+	uint8_t readingPtr = 0;
+	
 	for (;;)
 	{
-		osDelay(200);	
+		RefreshBanks(&readingBuffer[readingPtr]);
+		readingPtr = (readingPtr + 1) % READINGS_COUNT;
+		// TODO move the data out.
+		osDelay(tempRefreshRate_ms);
 	}
 }
 
-/**
-  * @brief  Toggle LED2 thread
-  * @param  argument not used
-  * @retval None
-  */
-static void LED_Thread2(void const *argument)
+static void ExternalControlsTask(void const *argument)
+{
+	(void) argument;
+	// TODO just call UART task here.
+  
+	for (;;)
+	{
+		osDelay(200);
+	}
+}
+
+static void TempControlTask(void const *argument)
 {
 	(void) argument;
   

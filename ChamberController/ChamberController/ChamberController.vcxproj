@@ -56,8 +56,25 @@
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
   <ItemGroup>
+    <ClCompile Include="ADC.c" />
+    <ClCompile Include="CalTable.c" />
+    <ClCompile Include="EEPROM.c" />
+    <ClCompile Include="I2C.c" />
     <ClCompile Include="main.c" />
+    <ClCompile Include="RelayController.c" />
     <ClCompile Include="system_stm32f0xx.c" />
+    <ClCompile Include="Thermometer.c" />
+    <ClCompile Include="UART.c" />
+    <ClInclude Include="ADC.h" />
+    <ClInclude Include="CalTable.h" />
+    <ClInclude Include="EEPROM.h" />
+    <ClInclude Include="I2C.h" />
+    <ClInclude Include="NTC.h" />
+    <ClInclude Include="RelayController.h" />
+    <ClInclude Include="SysDefs.h" />
+    <ClInclude Include="Temperature.h" />
+    <ClInclude Include="Thermometer.h" />
+    <ClInclude Include="UART.h" />
     <None Include="stm32.props" />
     <ClCompile Include="$(BSP_ROOT)\STM32F0xxxx\StartupFiles\startup_stm32f030x6.c" />
     <ClCompile Include="$(BSP_ROOT)\FreeRTOS\Source\croutine.c" />
@@ -130,6 +147,7 @@
     <ClCompile Include="$(BSP_ROOT)\STM32F0xxxx\STM32F0xx_HAL_Driver\Src\stm32f0xx_ll_usart.c" />
     <ClCompile Include="$(BSP_ROOT)\STM32F0xxxx\STM32F0xx_HAL_Driver\Src\stm32f0xx_ll_utils.c" />
     <ClInclude Include="FreeRTOSConfig.h" />
+    <ClInclude Include="PinDefs.h" />
     <ClInclude Include="stm32f0xx_hal_conf.h" />
     <ClInclude Include="$(BSP_ROOT)\FreeRTOS\Source\include\atomic.h" />
     <ClInclude Include="$(BSP_ROOT)\FreeRTOS\Source\include\croutine.h" />
