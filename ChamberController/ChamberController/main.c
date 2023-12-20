@@ -12,6 +12,41 @@ static void ThermometerTask(void const *argument);
 static void ExternalControlsTask(void const *argument);
 static void TempControlTask(void const *argument);
 
+
+static const Temperature_tenthsC minTemp = -200;
+static const Temperature_tenthsC maxTemp = 400;
+static const Temperature_tenthsC defaultTemp = 200;
+static const uint8_t defaultRange = 200;
+static const uint8_t minRange = 50;
+
+// When running a compressor, run for a minimum of this time.
+static const uint64_t MinCompressorTime_ms = 1000 * 45;
+// After finishing running the compressor, wait this time before starting again.
+static const uint64_t TimeBetweenCompressor_ms = 1000 * 60;
+static const uint64_t CutoffTime_ms = 1000 * 60 * 60 * 2;
+
+#define QUEUE_LENGTH 1
+#define QUEUE_ITEM_LENGTH sizeof(ADCReadings)
+static StaticQueue_t tempReadingsQueue;
+uint8_t tempStorageArea[QUEUE_LENGTH * QUEUE_ITEM_LENGTH];
+QueueHandle_t tempQueueHandle;
+
+typedef enum
+{
+	Idling = 0,
+	Cooling = 1,
+	StartingCooling = 2,
+	Heating = 3,
+	StartingHeating = 4,
+}TempStateMachine;
+
+typedef enum 
+{
+	Temp_Less = 0,
+	Temp_InBand = 1,
+	Temp_Higher = 2,
+}TempTarget;
+
 void SystemClock_Config(void)
 {
 	RCC_OscInitTypeDef RCC_OscInitStruct = { 0 };
@@ -44,6 +79,49 @@ void SystemClock_Config(void)
 	}
 }
 
+void vApplicationGetTimerTaskMemory(StaticTask_t **ppxTimerTaskTCBBuffer, StackType_t **ppxTimerTaskStackBuffer, uint32_t *pulTimerTaskStackSize)
+{
+	static StaticTask_t xTimerTaskTCB;
+	static StackType_t uxTimerTaskStack[configTIMER_TASK_STACK_DEPTH];
+	/* Pass out a pointer to the StaticTask_t structure in which the Timer
+    task's state will be stored. */
+	*ppxTimerTaskTCBBuffer = &xTimerTaskTCB;
+
+	/* Pass out the array that will be used as the Timer task's stack. */
+	*ppxTimerTaskStackBuffer = uxTimerTaskStack;
+
+	/* Pass out the size of the array pointed to by *ppxTimerTaskStackBuffer.
+	Note that, as the array is necessarily of type StackType_t,
+	configTIMER_TASK_STACK_DEPTH is specified in words, not bytes. */
+	*pulTimerTaskStackSize = configTIMER_TASK_STACK_DEPTH;
+}
+
+void vApplicationGetIdleTaskMemory( StaticTask_t **ppxIdleTaskTCBBuffer,
+	StackType_t **ppxIdleTaskStackBuffer,
+	uint32_t *pulIdleTaskStackSize)
+{
+	/* If the buffers to be provided to the Idle task are declared inside this
+	function then they must be declared static - otherwise they will be allocated on
+	the stack and so not exists after this function exits. */
+	static StaticTask_t xIdleTaskTCB;
+	static StackType_t uxIdleTaskStack[configMINIMAL_STACK_SIZE];
+
+	/* Pass out a pointer to the StaticTask_t structure in which the Idle task's
+	state will be stored. */
+	*ppxIdleTaskTCBBuffer = &xIdleTaskTCB;
+
+	/* Pass out the array that will be used as the Idle task's stack. */
+	*ppxIdleTaskStackBuffer = uxIdleTaskStack;
+
+	/* Pass out the size of the array pointed to by *ppxIdleTaskStackBuffer.
+	Note that, as the array is necessarily of type StackType_t,
+	configMINIMAL_STACK_SIZE is specified in words, not bytes. */
+	*pulIdleTaskStackSize = configMINIMAL_STACK_SIZE;
+}
+
+static Temperature_tenthsC setTemp = defaultTemp;
+static Temperature_tenthsC tempRange = defaultRange;
+
 int main(void)
 {
 	HAL_Init();  
@@ -60,11 +138,26 @@ int main(void)
 	SW_Version ver = GetVersion();
 	CalTable cal = AcquireCal();
 	InitThermometer(cal);
+	setTemp = GetStoredTargetTemp();
+	// Really do not drive lower than -20C, or higher than 40C. 
+	if (setTemp < minTemp || setTemp > maxTemp)
+	{
+		// Set to default if invalid read.
+		setTemp = defaultTemp; 
+	}
+	tempRange = GetStoredTempRange();
+	
+	if (tempRange < minRange) 
+	{
+		tempRange = defaultRange;
+	}
 	
 
 	osThreadDef(Thermo, ThermometerTask, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
 	osThreadDef(Control, ExternalControlsTask, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
 	osThreadDef(TempC, TempControlTask, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
+	
+	tempQueueHandle = xQueueCreateStatic(QUEUE_LENGTH, QUEUE_ITEM_LENGTH, tempStorageArea, &tempReadingsQueue);
 	
 	TempControlTaskHandle = osThreadCreate(osThread(Thermo), NULL);
 	ExternalControlsTaskHandle = osThreadCreate(osThread(Control), NULL);
@@ -109,7 +202,8 @@ static ADCReadings readingBuffer[READINGS_COUNT];
 static void ThermometerTask(void const *argument)
 {
 	// Every second should be fine. Temperature moves slowly.
-	static const uint32_t tempRefreshRate_ms = 1000;
+	static ADCReadings averageReadings;
+	static const uint32_t tempRefreshRate_ms = 500;
 	(void) argument;
 	
 	uint8_t readingPtr = 0;
@@ -118,7 +212,13 @@ static void ThermometerTask(void const *argument)
 	{
 		RefreshBanks(&readingBuffer[readingPtr]);
 		readingPtr = (readingPtr + 1) % READINGS_COUNT;
-		// TODO move the data out.
+		if (readingPtr == 0)
+		{
+			averageReadings = GetReadingsAverage(readingBuffer);
+			Temperature_tenthsC averageTemp;
+			GetAverageTemp(&averageReadings, &averageTemp);
+			xQueueSend(tempQueueHandle, (void*)&averageTemp, 100);
+		}
 		osDelay(tempRefreshRate_ms);
 	}
 }
@@ -134,13 +234,124 @@ static void ExternalControlsTask(void const *argument)
 	}
 }
 
+static inline TempTarget IsInRange(Temperature_tenthsC newTemp)
+{
+	if ((newTemp < (setTemp + tempRange)) && (newTemp > (setTemp - tempRange)))
+	{
+		return Temp_InBand;	
+	}
+	else if (newTemp > setTemp + tempRange)
+	{
+		return Temp_Higher;
+	}
+	else
+	{
+		return Temp_Less;
+	}
+}
+
 static void TempControlTask(void const *argument)
 {
 	(void) argument;
+	TempStateMachine currentState = Idling;
+	Temperature_tenthsC averageTemp;
+	uint64_t heatingStartTime = 0;
+	uint64_t coolingStartTime = 0;
+	uint64_t finishedCoolingTime = 0;
   
 	for (;;)
 	{
-		osDelay(200);
+		xQueueReceive(tempQueueHandle, (void*)&averageTemp, 0xffffffff);
+		TempTarget tgt = IsInRange(averageTemp);
+		switch (currentState)
+		{
+		case Idling:
+			{
+				if (tgt == Temp_InBand) 
+				{
+					currentState = Idling;
+				}
+				else if (tgt == Temp_Higher)
+				{
+					currentState = StartingCooling;
+				}
+				else
+				{
+					currentState = StartingHeating;
+				}
+			}
+			break;
+		case Cooling:
+			{
+				if (tgt != Temp_Less) 
+				{
+					if (xTaskGetTickCount() > coolingStartTime + MinCompressorTime_ms)
+					{
+						//Turn off the compressor. Go back to idle.
+						finishedCoolingTime = xTaskGetTickCount();
+						SetRelay(Cooler, Relay_Off);
+						currentState = Idling;
+					}
+					// If we're no longer needing to cool, but the compressor hasn't been on long enough, do nothing.
+				}
+				// If we've been heating for a long time.. just die off. 
+				if (xTaskGetTickCount() > coolingStartTime + CutoffTime_ms)
+				{
+					SetRelay(Cooler, Relay_Off);
+					SetRelay(Heater, Relay_Off);
+					while (1) ;
+				}
+			}
+			break;
+		case Heating:
+			{
+				if (tgt != Temp_Higher) 
+				{
+					SetRelay(Heater, Relay_Off);
+					currentState = Idling;
+				}
+				// If we've been heating for a long time.. just die off. 
+				if (xTaskGetTickCount() > heatingStartTime + CutoffTime_ms)
+				{
+					SetRelay(Cooler, Relay_Off);
+					SetRelay(Heater, Relay_Off);
+					while (1) ;
+				}
+			}
+			break;
+		case StartingHeating:
+			{
+				// Double check before starting
+				if (tgt == Temp_InBand || tgt == Temp_Higher) 
+				{
+					currentState = Idling;
+					continue;
+				}
+				heatingStartTime = xTaskGetTickCount();
+				SetRelay(Heater, Relay_On);
+				currentState = Heating;
+			}
+			break;
+		case StartingCooling:
+			{
+				// Double check before starting
+				if (tgt == Temp_InBand || tgt == Temp_Less) 
+				{
+					currentState = Idling;
+					continue;
+				}
+				// After turning off the compressor, give it a minute to cool down  / ect. Do not want to constantly throttle the compressor.
+				if (finishedCoolingTime != 0 && xTaskGetTickCount() > finishedCoolingTime + TimeBetweenCompressor_ms)
+				{
+					coolingStartTime = xTaskGetTickCount();
+					SetRelay(Cooler, Relay_On);
+					currentState = Cooling;
+				}
+			}
+			break;
+		default:
+			break;
+		}
 	}
 }
 

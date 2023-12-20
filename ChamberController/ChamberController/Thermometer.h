@@ -9,4 +9,4 @@ typedef struct
 
 void InitThermometer(CalTable);
 void RefreshBanks(ADCReadings*);
-void GetBankMins(ADCReadings*, Temperature_tenthsC*, Temperature_tenthsC*);
+void GetAverageTemp(ADCReadings*, Temperature_tenthsC*);

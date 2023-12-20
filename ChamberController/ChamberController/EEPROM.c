@@ -7,6 +7,9 @@ typedef enum
 {
 	SW_VER_MAJOR = 0,
 	SW_VER_MINOR = 1,
+	TEMP_SET_MAJOR = 2,
+	TEMP_SET_MINOR = 3,
+	TEMP_RANGE = 4,
 	
 }EEPROM_Address;
 
@@ -68,4 +71,35 @@ void SetVersion(SW_Version ver)
 {
 	uint8_t vals[3] = { (uint8_t)SW_VER_MAJOR, ver.Major, ver.Minor };
 	WriteI2C(EEPROM_DEV_ADDR, vals, 3);
+}
+
+
+Temperature_tenthsC GetStoredTargetTemp()
+{
+	Temperature_tenthsC ret;
+	uint8_t vals[2] = { 0, 0 };
+	uint8_t addr = (uint8_t)TEMP_SET_MAJOR;
+	ReadBytes(addr, vals, sizeof(vals));
+	ret = (Temperature_tenthsC)(vals[0] << 8) | vals[1];
+	return ret;
+}
+
+void SetStoredTemp(Temperature_tenthsC target)
+{
+	uint8_t vals[3] = { (uint8_t)TEMP_SET_MAJOR, (uint8_t)(target >> 8), (uint8_t)(target & 0x00ff)};
+	WriteI2C(EEPROM_DEV_ADDR, vals, 3);
+}
+
+uint8_t GetStoredTempRange()
+{
+	uint8_t retVal;
+	uint8_t addr = (uint8_t)TEMP_RANGE;
+	retVal = ReadByte(addr);
+	return retVal;
+}
+
+void SetStoredTempRange(uint8_t setRange)
+{
+	uint8_t vals[2] = { (uint8_t)TEMP_RANGE, setRange};
+	WriteI2C(EEPROM_DEV_ADDR, vals, 2);
 }

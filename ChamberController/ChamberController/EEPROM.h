@@ -1,5 +1,6 @@
 #pragma once
 #include "CalTable.h"
+#include "Temperature.h"
 
 typedef struct
 {
@@ -15,3 +16,8 @@ void SetCal(Calibration);
 SW_Version GetVersion();
 void SetVersion(SW_Version);
 
+Temperature_tenthsC GetStoredTargetTemp();
+void SetStoredTemp(Temperature_tenthsC);
+
+uint8_t GetStoredTempRange();
+void SetStoredTempRange(uint8_t);

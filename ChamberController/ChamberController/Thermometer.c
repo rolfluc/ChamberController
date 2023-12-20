@@ -59,60 +59,12 @@ void RefreshBanks(ADCReadings* temps)
 	*temps = RefreshReadings();
 }
 
-void GetBankMins(ADCReadings* adcReadings, Temperature_tenthsC* bank0Min, Temperature_tenthsC* bank1Min)
+void GetAverageTemp(ADCReadings* adcReadings, Temperature_tenthsC* tempOut)
 {
-	uint8_t i = 0;
-	uint8_t index = 0;
-	uint16_t min = 0;
-	//Minimum in this perspective, is getting the maximum ADC level. High resistance indicates low temperature. 
-	//High resistance, leads to more voltage drop over second resistor (NTC). 
-	
-	for (; i < NUMBER_ADCS / 2; i++)
+	Temperature_tenthsC outTemp = 0;
+	for (uint8_t i = 0; i < NUMBER_ADCS; i++)
 	{
-		if (adcReadings->adcCounts[i] > min)
-		{
-			min = adcReadings->adcCounts[i];
-			index = i;
-		}
+		outTemp += ConvertCounts(adcReadings->adcCounts[i],i);
 	}
-	*bank0Min = ConvertCounts(min, index);
-	min = 0;
-	for (; i < NUMBER_ADCS; i++)
-	{
-		if (adcReadings->adcCounts[i] > min)
-		{
-			min = adcReadings->adcCounts[i];
-			index = i;
-		}
-	}
-	*bank1Min = ConvertCounts(min, index);
-}
-
-void GetBankMaxs(ADCReadings* adcReadings, Temperature_tenthsC* bank0max, Temperature_tenthsC* bank1Max) 
-{
-	uint8_t i = 0;
-	uint8_t index = 0;
-	uint16_t max = 0xffff;
-	//Max in this perspective, is the minimum ADC level. Low resistance indicates high temperature. 
-	//High resistance, leads to more voltage drop over second resistor (NTC). 
-	
-	for (; i < NUMBER_ADCS / 2; i++)
-	{
-		if (adcReadings->adcCounts[i] < max)
-		{
-			max = adcReadings->adcCounts[i];
-			index = i;
-		}
-	}
-	*bank0max = ConvertCounts(max, index);
-	max = 0xffff;
-	for (; i < NUMBER_ADCS; i++)
-	{
-		if (adcReadings->adcCounts[i] < max)
-		{
-			max = adcReadings->adcCounts[i];
-			index = i;
-		}
-	}
-	*bank1Max = ConvertCounts(max, index);
+	*tempOut = outTemp / NUMBER_ADCS;
 }
