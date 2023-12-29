@@ -227,11 +227,8 @@ static void ExternalControlsTask(void const *argument)
 {
 	(void) argument;
 	// TODO just call UART task here.
-  
-	for (;;)
-	{
-		osDelay(200);
-	}
+	// TODO change to external UART from internal UART first.
+	RunUARTTask();
 }
 
 static inline TempTarget IsInRange(Temperature_tenthsC newTemp)
