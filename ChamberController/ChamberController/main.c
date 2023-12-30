@@ -12,7 +12,6 @@ static void ThermometerTask(void const *argument);
 static void ExternalControlsTask(void const *argument);
 static void TempControlTask(void const *argument);
 
-
 static const Temperature_tenthsC minTemp = -200;
 static const Temperature_tenthsC maxTemp = 400;
 static const Temperature_tenthsC defaultTemp = 200;
@@ -122,6 +121,23 @@ void vApplicationGetIdleTaskMemory( StaticTask_t **ppxIdleTaskTCBBuffer,
 static Temperature_tenthsC setTemp = defaultTemp;
 static Temperature_tenthsC tempRange = defaultRange;
 
+void getAndValidateTemps()
+{
+	setTemp = GetStoredTargetTemp();
+	// Really do not drive lower than -20C, or higher than 40C. 
+	if (setTemp < minTemp || setTemp > maxTemp)
+	{
+		// Set to default if invalid read.
+		setTemp = defaultTemp; 
+	}
+	tempRange = GetStoredTempRange();
+	
+	if (tempRange > minRange) 
+	{
+		tempRange = defaultRange;
+	}
+}
+
 int main(void)
 {
 	HAL_Init();  
@@ -138,21 +154,8 @@ int main(void)
 	SW_Version ver = GetVersion();
 	CalTable cal = AcquireCal();
 	InitThermometer(cal);
-	setTemp = GetStoredTargetTemp();
-	// Really do not drive lower than -20C, or higher than 40C. 
-	if (setTemp < minTemp || setTemp > maxTemp)
-	{
-		// Set to default if invalid read.
-		setTemp = defaultTemp; 
-	}
-	tempRange = GetStoredTempRange();
+	getAndValidateTemps();
 	
-	if (tempRange < minRange) 
-	{
-		tempRange = defaultRange;
-	}
-	
-
 	osThreadDef(Thermo, ThermometerTask, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
 	osThreadDef(Control, ExternalControlsTask, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
 	osThreadDef(TempC, TempControlTask, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
@@ -226,8 +229,6 @@ static void ThermometerTask(void const *argument)
 static void ExternalControlsTask(void const *argument)
 {
 	(void) argument;
-	// TODO just call UART task here.
-	// TODO change to external UART from internal UART first.
 	RunUARTTask();
 }
 
@@ -247,14 +248,16 @@ static inline TempTarget IsInRange(Temperature_tenthsC newTemp)
 	}
 }
 
+TempStateMachine currentState = Idling;
+Temperature_tenthsC averageTemp;
+uint64_t heatingStartTime = 0;
+uint64_t coolingStartTime = 0;
+uint64_t finishedCoolingTime = 0;
+
 static void TempControlTask(void const *argument)
 {
 	(void) argument;
-	TempStateMachine currentState = Idling;
-	Temperature_tenthsC averageTemp;
-	uint64_t heatingStartTime = 0;
-	uint64_t coolingStartTime = 0;
-	uint64_t finishedCoolingTime = 0;
+	
   
 	for (;;)
 	{
@@ -280,7 +283,7 @@ static void TempControlTask(void const *argument)
 			break;
 		case Cooling:
 			{
-				if (tgt != Temp_Less) 
+				if (tgt != Temp_Higher) 
 				{
 					if (xTaskGetTickCount() > coolingStartTime + MinCompressorTime_ms)
 					{
@@ -302,7 +305,7 @@ static void TempControlTask(void const *argument)
 			break;
 		case Heating:
 			{
-				if (tgt != Temp_Higher) 
+				if (tgt != Temp_Less) 
 				{
 					SetRelay(Heater, Relay_Off);
 					currentState = Idling;
@@ -338,7 +341,7 @@ static void TempControlTask(void const *argument)
 					continue;
 				}
 				// After turning off the compressor, give it a minute to cool down  / ect. Do not want to constantly throttle the compressor.
-				if (finishedCoolingTime != 0 && xTaskGetTickCount() > finishedCoolingTime + TimeBetweenCompressor_ms)
+				if (finishedCoolingTime == 0 || (xTaskGetTickCount() > finishedCoolingTime + TimeBetweenCompressor_ms))
 				{
 					coolingStartTime = xTaskGetTickCount();
 					SetRelay(Cooler, Relay_On);

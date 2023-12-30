@@ -21,3 +21,7 @@ void SetStoredTemp(Temperature_tenthsC);
 
 uint8_t GetStoredTempRange();
 void SetStoredTempRange(uint8_t);
+
+
+// TODO hacky 
+void getAndValidateTemps();

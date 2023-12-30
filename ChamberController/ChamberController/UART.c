@@ -135,6 +135,8 @@ static void ProcessCommand(uint8_t input0, uint8_t input1, uint8_t input2, uint8
 			{
 				setpoint = input1 * 100 + input2 * 10 + input3;
 			}
+			SetStoredTemp((Temperature_tenthsC)setpoint) ;
+			getAndValidateTemps();
 		}
 		break;
 		case CommandBand:
@@ -152,6 +154,8 @@ static void ProcessCommand(uint8_t input0, uint8_t input1, uint8_t input2, uint8
 			{
 				band = input1 * 100 + input2 * 10 + input3;
 			}
+			SetStoredTempRange((uint8_t)band);
+			getAndValidateTemps();
 		}
 		break;
 	default:
