@@ -208,7 +208,6 @@ static void ThermometerTask(void const *argument)
 	static ADCReadings averageReadings;
 	static const uint32_t tempRefreshRate_ms = 500;
 	(void) argument;
-	
 	uint8_t readingPtr = 0;
 	
 	for (;;)
@@ -272,7 +271,7 @@ static void TempControlTask(void const *argument)
 					currentState = Idling;
 				}
 				else if (tgt == Temp_Higher)
-				{
+				{					
 					currentState = StartingCooling;
 				}
 				else

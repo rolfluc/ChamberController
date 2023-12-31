@@ -32,57 +32,12 @@ void InitADC()
 		//TODO fail
 	}
 	
-#if 0
-	hadc.Instance = ADC1;
-	hadc.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
-	hadc.Init.Resolution = ADC_RESOLUTION_12B;
-	hadc.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-	hadc.Init.ScanConvMode = ADC_SCAN_ENABLE;
-	hadc.Init.EOCSelection = ADC_EOC_SEQ_CONV;
-	hadc.Init.LowPowerAutoWait = DISABLE;
-	hadc.Init.LowPowerAutoPowerOff = DISABLE;
-	hadc.Init.ContinuousConvMode = ENABLE;
-	hadc.Init.DiscontinuousConvMode = DISABLE;
-	hadc.Init.ExternalTrigConv = ADC_SOFTWARE_START;
-	hadc.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
-	hadc.Init.DMAContinuousRequests = DISABLE;
-	hadc.Init.Overrun = ADC_OVR_DATA_OVERWRITTEN;
-	if (HAL_ADC_Init(&hadc) != HAL_OK)
-	{
-		//TODO fail
-	}
-	
-	
-	
-	hdma.Instance = DMA1_Channel1;
-	hdma.Init.Direction = DMA_PERIPH_TO_MEMORY;
-	hdma.Init.PeriphInc = DMA_PINC_DISABLE;
-	hdma.Init.MemInc = DMA_MINC_ENABLE;
-	hdma.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
-	hdma.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
-	hdma.Init.Mode = DMA_NORMAL;
-	hdma.Init.Priority = DMA_PRIORITY_MEDIUM;
-	HAL_DMA_Init(&hdma);
-
-	__HAL_LINKDMA(&hadc, DMA_Handle, hdma);
-	
-	__HAL_RCC_DMA1_CLK_ENABLE();
-
-	HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
-	HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
-#endif
-	
-	
 	init.Mode = GPIO_MODE_ANALOG;
 	init.Pull = GPIO_NOPULL;
 	init.Pin = NTC0.pinNumber;
 	HAL_GPIO_Init(NTC0.pinPort, &init);
 	init.Pin = NTC1.pinNumber;
 	HAL_GPIO_Init(NTC1.pinPort, &init);
-	init.Pin = NTC2.pinNumber;
-	HAL_GPIO_Init(NTC2.pinPort, &init);
-	init.Pin = NTC3.pinNumber;
-	HAL_GPIO_Init(NTC3.pinPort, &init);
 }
 
 ADCReadings RefreshReadings()
