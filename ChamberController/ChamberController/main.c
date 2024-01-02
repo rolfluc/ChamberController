@@ -5,6 +5,7 @@
 #include "EEPROM.h"
 #include "RelayController.h"
 #include "UART.h"
+#include <string.h> 
 
 osThreadId TempControlTaskHandle, ExternalControlsTaskHandle, TempControlTaskHandle;
 
@@ -22,7 +23,8 @@ static const uint8_t minRange = 50;
 static const uint64_t MinCompressorTime_ms = 1000 * 45;
 // After finishing running the compressor, wait this time before starting again.
 static const uint64_t TimeBetweenCompressor_ms = 1000 * 60;
-static const uint64_t CutoffTime_ms = 1000 * 60 * 60 * 2;
+// Do not allow to run for longer than 4 hours continuously without a quick break.
+static const uint64_t CutoffTime_ms = 1000 * 60 * 60 * 4;
 
 #define QUEUE_LENGTH 1
 #define QUEUE_ITEM_LENGTH sizeof(ADCReadings)
@@ -183,12 +185,13 @@ void SysTick_Handler(void)
 #define READINGS_COUNT 2
 ADCReadings GetReadingsAverage(ADCReadings* readings)
 {
-	ADCReadings tmp = readings[0];
-	for (uint8_t i = 1; i < READINGS_COUNT; i++)
+	ADCReadings tmp;
+	memset((void*)&tmp, 0, sizeof(ADCReadings));
+	for (uint8_t i = 0; i < READINGS_COUNT; i++)
 	{
 		for (uint8_t j = 0; j < NUMBER_ADCS; j++)
 		{
-			tmp.adcCounts[j] += readings->adcCounts[i];
+			tmp.adcCounts[j] += readings[i].adcCounts[j];
 		}
 	}
 	
@@ -247,6 +250,16 @@ static inline TempTarget IsInRange(Temperature_tenthsC newTemp)
 	}
 }
 
+static inline bool shouldHeat(Temperature_tenthsC newTemp)
+{
+	return (newTemp < setTemp);
+}
+
+static inline bool shouldCool(Temperature_tenthsC newTemp)
+{
+	return (newTemp > setTemp);	
+}
+
 TempStateMachine currentState = Idling;
 Temperature_tenthsC averageTemp;
 uint64_t heatingStartTime = 0;
@@ -261,11 +274,11 @@ static void TempControlTask(void const *argument)
 	for (;;)
 	{
 		xQueueReceive(tempQueueHandle, (void*)&averageTemp, 0xffffffff);
-		TempTarget tgt = IsInRange(averageTemp);
 		switch (currentState)
 		{
 		case Idling:
 			{
+				TempTarget tgt = IsInRange(averageTemp);
 				if (tgt == Temp_InBand) 
 				{
 					currentState = Idling;
@@ -282,7 +295,7 @@ static void TempControlTask(void const *argument)
 			break;
 		case Cooling:
 			{
-				if (tgt != Temp_Higher) 
+				if (!shouldCool(averageTemp))
 				{
 					if (xTaskGetTickCount() > coolingStartTime + MinCompressorTime_ms)
 					{
@@ -304,7 +317,7 @@ static void TempControlTask(void const *argument)
 			break;
 		case Heating:
 			{
-				if (tgt != Temp_Less) 
+				if (!shouldHeat(averageTemp)) 
 				{
 					SetRelay(Heater, Relay_Off);
 					currentState = Idling;
@@ -320,6 +333,7 @@ static void TempControlTask(void const *argument)
 			break;
 		case StartingHeating:
 			{
+				TempTarget tgt = IsInRange(averageTemp);
 				// Double check before starting
 				if (tgt == Temp_InBand || tgt == Temp_Higher) 
 				{
@@ -333,6 +347,7 @@ static void TempControlTask(void const *argument)
 			break;
 		case StartingCooling:
 			{
+				TempTarget tgt = IsInRange(averageTemp);
 				// Double check before starting
 				if (tgt == Temp_InBand || tgt == Temp_Less) 
 				{
