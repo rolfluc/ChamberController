@@ -26,6 +26,9 @@ static const uint64_t TimeBetweenCompressor_ms = 1000 * 60;
 // Do not allow to run for longer than 4 hours continuously without a quick break.
 static const uint64_t CutoffTime_ms = 1000 * 60 * 60 * 4;
 
+// If two adjacent temperates differ by this much, reject it. Possibly bad reading.
+static const Temperature_tenthsC outlierRejection = 50;
+
 #define QUEUE_LENGTH 1
 #define QUEUE_ITEM_LENGTH sizeof(ADCReadings)
 static StaticQueue_t tempReadingsQueue;
@@ -194,6 +197,10 @@ int main(void)
 	InitThermometer(cal);
 	getAndValidateTemps();
 	
+	SetRelay(Heater, Relay_Off);
+	SetRelay(Cooler, Relay_Off);
+	HAL_Delay(100);
+	
 	osThreadDef(Thermo, ThermometerTask, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
 	osThreadDef(Control, ExternalControlsTask, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
 	osThreadDef(TempC, TempControlTask, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
@@ -310,6 +317,7 @@ static inline bool shouldCool(Temperature_tenthsC newTemp)
 
 TempStateMachine currentState = Idling;
 Temperature_tenthsC averageTemp;
+Temperature_tenthsC lastTemp;
 uint64_t heatingStartTime = 0;
 uint64_t coolingStartTime = 0;
 uint64_t finishedCoolingTime = 0;
@@ -317,9 +325,16 @@ uint64_t finishedCoolingTime = 0;
 static void TempControlTask(void const *argument)
 {
 	(void) argument;
+	xQueueReceive(tempQueueHandle, (void*)&lastTemp, 0xffffffff);
 	for (;;)
 	{
 		xQueueReceive(tempQueueHandle, (void*)&averageTemp, 0xffffffff);
+		if ((averageTemp - lastTemp) > outlierRejection)
+		{
+			lastTemp = averageTemp;
+			continue;
+		}
+		lastTemp = averageTemp;
 		switch (currentState)
 		{
 		case Idling:
