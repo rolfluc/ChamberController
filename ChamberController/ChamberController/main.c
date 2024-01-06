@@ -123,6 +123,7 @@ void vApplicationGetIdleTaskMemory( StaticTask_t **ppxIdleTaskTCBBuffer,
 static Temperature_tenthsC setTemp = defaultTemp;
 static Temperature_tenthsC tempRange = defaultRange;
 
+uint8_t temperatureWriteBuffer[10]; //Up to 4 characters, and 1 newline
 void getAndValidateTemps()
 {
 	setTemp = GetStoredTargetTemp();
@@ -134,10 +135,45 @@ void getAndValidateTemps()
 	}
 	tempRange = GetStoredTempRange();
 	
-	if (tempRange > minRange) 
+	if (tempRange < minRange) 
 	{
 		tempRange = defaultRange;
 	}
+	// Now print out the details:
+	// set:-300\r\n
+	// bnd:200\r\n
+	uint8_t writePtr = 0;
+	temperatureWriteBuffer[writePtr++] = 's';
+	temperatureWriteBuffer[writePtr++] = 'e';
+	temperatureWriteBuffer[writePtr++] = 't';
+	temperatureWriteBuffer[writePtr++] = ':';
+	if (setTemp < 0)
+	{
+		temperatureWriteBuffer[writePtr++] = '-';
+		setTemp *= -1;
+	}
+	temperatureWriteBuffer[writePtr++] = (setTemp / 100) + 48;
+	temperatureWriteBuffer[writePtr++] = ((setTemp / 10) % 10) + 48;
+	temperatureWriteBuffer[writePtr++] = (setTemp % 10) + 48;
+	temperatureWriteBuffer[writePtr++] = '\r';
+	temperatureWriteBuffer[writePtr] = '\n';
+	WriteBlocking(temperatureWriteBuffer, writePtr);
+	writePtr = 0;
+	temperatureWriteBuffer[writePtr++] = 'b';
+	temperatureWriteBuffer[writePtr++] = 'n';
+	temperatureWriteBuffer[writePtr++] = 'd';
+	temperatureWriteBuffer[writePtr++] = ':';
+	if (tempRange < 0)
+	{
+		temperatureWriteBuffer[writePtr++] = '-';
+		tempRange *= -1;
+	}
+	temperatureWriteBuffer[writePtr++] = (tempRange / 100) + 48;
+	temperatureWriteBuffer[writePtr++] = ((tempRange / 10) % 10) + 48;
+	temperatureWriteBuffer[writePtr++] = (tempRange % 10) + 48;
+	temperatureWriteBuffer[writePtr++] = '\r';
+	temperatureWriteBuffer[writePtr] = '\n';
+	WriteBlocking(temperatureWriteBuffer, writePtr);
 }
 
 int main(void)
@@ -151,7 +187,7 @@ int main(void)
 	InitRelays();
 	
 	SystemClock_Config();
-	//InitUart();
+	InitUart();
 	InitEEPROM();
 	SW_Version ver = GetVersion();
 	CalTable cal = AcquireCal();
@@ -203,7 +239,6 @@ ADCReadings GetReadingsAverage(ADCReadings* readings)
 	return tmp;
 }
 
-
 static ADCReadings readingBuffer[READINGS_COUNT];
 static void ThermometerTask(void const *argument)
 {
@@ -223,6 +258,19 @@ static void ThermometerTask(void const *argument)
 			Temperature_tenthsC averageTemp;
 			GetAverageTemp(&averageReadings, &averageTemp);
 			xQueueSend(tempQueueHandle, (void*)&averageTemp, 100);
+			// No Snprintf because too little flash. Basic implementation.
+			uint8_t writeTarget = 0;
+			if (averageTemp < 0)
+			{
+				temperatureWriteBuffer[writeTarget++] = '-';
+				averageTemp *= -1;
+			}
+			temperatureWriteBuffer[writeTarget++] = (averageTemp / 100) + 48;
+			temperatureWriteBuffer[writeTarget++] = ((averageTemp / 10) % 10) + 48;
+			temperatureWriteBuffer[writeTarget++] = (averageTemp % 10) + 48;
+			temperatureWriteBuffer[writeTarget++] = '\r';
+			temperatureWriteBuffer[writeTarget] = '\n';
+			WriteBlocking(temperatureWriteBuffer, writeTarget);
 		}
 		osDelay(tempRefreshRate_ms);
 	}
@@ -269,8 +317,6 @@ uint64_t finishedCoolingTime = 0;
 static void TempControlTask(void const *argument)
 {
 	(void) argument;
-	
-  
 	for (;;)
 	{
 		xQueueReceive(tempQueueHandle, (void*)&averageTemp, 0xffffffff);
@@ -390,3 +436,9 @@ void assert_failed(uint8_t* file, uint32_t line)
 #endif
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
+
+
+void HardFault_Handler()
+{
+	NVIC_SystemReset();
+}

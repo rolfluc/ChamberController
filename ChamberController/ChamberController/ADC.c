@@ -36,8 +36,6 @@ void InitADC()
 	init.Pull = GPIO_NOPULL;
 	init.Pin = NTC0.pinNumber;
 	HAL_GPIO_Init(NTC0.pinPort, &init);
-	init.Pin = NTC1.pinNumber;
-	HAL_GPIO_Init(NTC1.pinPort, &init);
 }
 
 ADCReadings RefreshReadings()

@@ -51,7 +51,7 @@ void InitUart()
 	InitUartPins();
 	__HAL_RCC_USART1_CLK_ENABLE();
 	UartPort.Instance = USART1;
-	UartPort.Init.BaudRate = 9600;
+	UartPort.Init.BaudRate = 115200;
 	UartPort.Init.WordLength = UART_WORDLENGTH_8B;
 	UartPort.Init.StopBits = UART_STOPBITS_1;
 	UartPort.Init.Parity = UART_PARITY_NONE;
@@ -168,7 +168,6 @@ void RunUARTTask()
 	uint8_t backReturn = '\b';
 	HAL_StatusTypeDef ret;
 	static const uint32_t uartByteRate = 90;
-	InitUart();
 	for (;;)
 	{
 		ret = ReadBlocking(&readBuffer[bufferPtr], 1);

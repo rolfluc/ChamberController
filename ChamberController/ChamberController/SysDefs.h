@@ -1,2 +1,2 @@
 #pragma once
-#define NUMBER_ADCS 2
+#define NUMBER_ADCS 1
