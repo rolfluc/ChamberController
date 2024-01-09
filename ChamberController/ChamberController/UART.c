@@ -4,6 +4,8 @@
 #include <../CMSIS_RTOS/cmsis_os.h>
 #include "EEPROM.h"
 
+#undef USE_TAG_CONNECT
+
 static const uint32_t uartPinMode = GPIO_MODE_AF_PP;
 static const uint32_t uartPinPull = GPIO_NOPULL;
 static const uint32_t uartPinSpeed = GPIO_SPEED_FREQ_HIGH;
@@ -39,18 +41,30 @@ void InitUartPins()
 	init.Mode = uartPinMode;
 	init.Pull = uartPinPull;
 	//TODO USART port
+#ifdef USE_TAG_CONNECT
 	init.Alternate = GPIO_AF1_USART1;
 	init.Pin = UART_TX.pinNumber;
 	HAL_GPIO_Init(UART_TX.pinPort, &init);
 	init.Pin = UART_RX.pinNumber;
 	HAL_GPIO_Init(UART_RX.pinPort, &init);
+#else
+	init.Alternate = GPIO_AF1_USART1;
+	init.Pin = UART1_RX.pinNumber;
+	HAL_GPIO_Init(UART1_RX.pinPort, &init);
+	init.Pin = UART1_TX.pinNumber;
+	HAL_GPIO_Init(UART1_TX.pinPort, &init);
+#endif
 }
 
 void InitUart()
 {
 	InitUartPins();
 	__HAL_RCC_USART1_CLK_ENABLE();
+#ifdef USE_TAG_CONNECT
 	UartPort.Instance = USART1;
+#else
+	UartPort.Instance = USART1;
+#endif
 	UartPort.Init.BaudRate = 115200;
 	UartPort.Init.WordLength = UART_WORDLENGTH_8B;
 	UartPort.Init.StopBits = UART_STOPBITS_1;

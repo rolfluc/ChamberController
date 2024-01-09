@@ -17,7 +17,7 @@ static const Temperature_tenthsC minTemp = -200;
 static const Temperature_tenthsC maxTemp = 400;
 static const Temperature_tenthsC defaultTemp = 200;
 static const uint8_t defaultRange = 200;
-static const uint8_t minRange = 50;
+static const uint8_t minRange = 30;
 
 // When running a compressor, run for a minimum of this time.
 static const uint64_t MinCompressorTime_ms = 1000 * 45;
@@ -197,6 +197,9 @@ int main(void)
 	InitThermometer(cal);
 	getAndValidateTemps();
 	
+	SetRelay(Heater, Relay_On);
+	SetRelay(Cooler, Relay_On);
+	HAL_Delay(100);
 	SetRelay(Heater, Relay_Off);
 	SetRelay(Cooler, Relay_Off);
 	HAL_Delay(100);
